@@ -8,10 +8,10 @@
 
 [general]
 name=Relation Replicator
-qgisMinimumVersion=2.0
+qgisMinimumVersion=2.2
 description=Plugin to replicate child non spatial features in a 1:n relation with a spatial parent table
 version=0.1
-author=Alexandre Neto / Cascais Ambiente
+author=Alexandre Neto (for Cascais Ambiente)
 email=senhor.neto@gmail.com
 
 # End of mandatory metadata

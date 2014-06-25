@@ -3,11 +3,12 @@
 /***************************************************************************
  RelationReplicatorDialog
                                  A QGIS plugin
- Plugin to replicate child non spatial features in a 1:n relation with a spatial parent table
+ Plugin to replicate child non spatial features in a 1:n
+ relation with a spatial parent table
                              -------------------
         begin                : 2014-06-23
         git sha              : $Format:%H$
-        copyright            : (C) 2014 by Alexandre Neto / Cascais Ambiente
+        copyright            : (C) 2014 by Alexandre Neto (for Cascais Ambiente)
         email                : senhor.neto@gmail.com
  ***************************************************************************/
 

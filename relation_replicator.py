@@ -95,7 +95,7 @@ class RelationReplicator:
         status_tip=None,
         whats_this=None,
         parent=None):
-        """Add a toolbar icon to the InaSAFE toolbar.
+        """Add a toolbar icon to the toolbar.
 
         :param icon_path: Path to the icon for this action. Can be a resource
             path (e.g. ':/plugins/foo/bar.png') or a normal file system path.
@@ -185,6 +185,45 @@ class RelationReplicator:
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            # Do something useful here - delete the line containing pass and
-            # substitute with your code.
-            pass
+            # TODO Define input layer from dialog
+            child_layer = QgsMapLayerRegistry.instance().mapLayer(u'acoes20130312143950563')
+            parent_layer = QgsMapLayerRegistry.instance().mapLayer(u'unidadesdegestao20130312143304288')
+
+            # Get layer default values from provider
+            # (this avoids problems with unique keys)
+            provider = child_layer.dataProvider()
+            temp_feature = QgsFeature()
+            attributes = {}
+
+            for j in child_layer.pendingAllAttributesList():
+                if not provider.defaultValue(j).isNull():
+                    attributes[j] = provider.defaultValue(j)
+                else:
+                    attributes[j] = None
+
+            temp_feature.setAttributeMap(attributes)
+
+            # open feature form and waits for edits
+            if self.iface.openFeatureForm(child_layer, temp_feature):
+
+                # start edit command to allow undo\redo
+                # TODO get layer name to put in Edit command
+                child_layer.beginEditCommand("Add new rows in ...")
+
+                new_attributes = temp_feature.attributeMap()
+
+                # replicate child Layer's new record for each
+                # of the selected features in the parent layer
+                selected_ref_keys = [feature.attributeMap()[1] for feature in parent_layer.selectedFeatures()]
+
+                for ref_key in selected_ref_keys:
+                    new_attributes[1] = ref_key
+                    temp_feature.setAttributeMap(new_attributes)
+                    new_feature = QgsFeature(temp_feature)
+                    child_layer.addFeature( new_feature )
+
+                child_layer.endEditCommand()
+            else:
+                pass
+                # print "Cancelled"
+                # child_layer.destroyEditCommand()
