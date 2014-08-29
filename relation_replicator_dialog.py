@@ -40,3 +40,7 @@ class RelationReplicatorDialog(QtGui.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+
+        # UI CONNECTORS
+        #self.buttonBox_ok_cancel.accepted.connect(self.run)
+        #self.buttonBox_ok_cancel.rejected.connect(self.close)

@@ -3,7 +3,8 @@
 /***************************************************************************
  RelationReplicator
                                  A QGIS plugin
- Plugin to replicate child non spatial features in a 1:n relation with a spatial parent table
+ Plugin to replicate child non spatial features in a 1:n relation with a
+ spatial parent table
                               -------------------
         begin                : 2014-06-23
         git sha              : $Format:%H$
@@ -25,9 +26,11 @@ from PyQt4.QtGui import QAction, QIcon
 # Initialize Qt resources from file resources.py
 import resources_rc
 # Import the code for the dialog
+from qgis.core import *
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 from relation_replicator_dialog import RelationReplicatorDialog
 import os.path
-
 
 class RelationReplicator:
     """QGIS Plugin Implementation."""
@@ -67,6 +70,8 @@ class RelationReplicator:
         # TODO: We are going to let the user set this up in a future iteration
         self.toolbar = self.iface.addToolBar(u'RelationReplicator')
         self.toolbar.setObjectName(u'RelationReplicator')
+
+        #self.valid_relations = []
 
     # noinspection PyMethodMayBeStatic
     def tr(self, message):
@@ -159,7 +164,6 @@ class RelationReplicator:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
         icon_path = ':/plugins/RelationReplicator/icon.png'
         self.add_action(
             icon_path,
@@ -179,29 +183,54 @@ class RelationReplicator:
 
     def run(self):
         """Run method that performs all the real work"""
+        self.mc = self.iface.mapCanvas()
+        self.project = QgsProject.instance()
+        self.rel_manager = self.project.relationManager()
+        self.relations = self.rel_manager.relations()
+        self.layer = self.mc.currentLayer()
+
+        #Clear relations
+        self.valid_relations = {}
+
+        # Get all valid relations for the current layer
+        self.get_valid_relations()
+
+        #populate dialog combobox
+        self.dlg.relations_combobox.clear()
+        self.dlg.relations_combobox.addItems(list(self.valid_relations))
+
         # show the dialog
         self.dlg.show()
         # Run the dialog event loop
         result = self.dlg.exec_()
         # See if OK was pressed
         if result:
-            # TODO Define input layer from dialog
-            child_layer = QgsMapLayerRegistry.instance().mapLayer(u'acoes20130312143950563')
-            parent_layer = QgsMapLayerRegistry.instance().mapLayer(u'unidadesdegestao20130312143304288')
+            rel_name = self.dlg.relations_combobox.currentText()
+            relation = self.valid_relations[rel_name]
+            child_layer = relation.referencingLayer()
+            parent_layer = self.layer
+
+            # get referenced and referencing field
+            rel_fields = relation.fieldPairs()
+            for key in relation.fieldPairs():
+                ref_ed_field = rel_fields[key]
+                ref_ing_field = key
+
+            # create an empty temporary feature that will be replicated
+            temp_feature = QgsFeature()
+            attributes = []
 
             # Get layer default values from provider
             # (this avoids problems with unique keys)
             provider = child_layer.dataProvider()
-            temp_feature = QgsFeature()
-            attributes = {}
 
             for j in child_layer.pendingAllAttributesList():
-                if not provider.defaultValue(j).isNull():
-                    attributes[j] = provider.defaultValue(j)
+                if provider.defaultValue(j):
+                    attributes.append(provider.defaultValue(j))
                 else:
-                    attributes[j] = None
+                    attributes.append('34') #none
 
-            temp_feature.setAttributeMap(attributes)
+            temp_feature.setAttributes(attributes)
 
             # open feature form and waits for edits
             if self.iface.openFeatureForm(child_layer, temp_feature):
@@ -210,20 +239,33 @@ class RelationReplicator:
                 # TODO get layer name to put in Edit command
                 child_layer.beginEditCommand("Add new rows in ...")
 
-                new_attributes = temp_feature.attributeMap()
+                new_attributes = temp_feature.attributes()
+                print new_attributes
 
                 # replicate child Layer's new record for each
                 # of the selected features in the parent layer
-                selected_ref_keys = [feature.attributeMap()[1] for feature in parent_layer.selectedFeatures()]
+                selected_ref_ed_keys = [feature.attribute(ref_ed_field) for feature in parent_layer.selectedFeatures()]
 
-                for ref_key in selected_ref_keys:
+                for ref_key in selected_ref_ed_keys:
                     new_attributes[1] = ref_key
-                    temp_feature.setAttributeMap(new_attributes)
+                    temp_feature.setAttributes(new_attributes)
                     new_feature = QgsFeature(temp_feature)
-                    child_layer.addFeature( new_feature )
+                    child_layer.addFeature(new_feature)
 
                 child_layer.endEditCommand()
             else:
                 pass
                 # print "Cancelled"
                 # child_layer.destroyEditCommand()
+
+    def get_valid_relations(self):
+        # purpose: get current layer relations
+        layer = self.mc.currentLayer()
+        relations = self.relations
+        for rel_id in relations:
+            relation = relations[rel_id]
+            rel_ref_ed = relation.referencedLayer()
+            if layer == rel_ref_ed:
+                rel_name = relation.name()
+                self.valid_relations[unicode(rel_name)] = relation
+        return
